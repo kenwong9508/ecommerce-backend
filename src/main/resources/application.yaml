@@ -13,3 +13,8 @@ spring:
       ddl-auto: update
     show-sql: true
     open-in-view: false
+
+logging:
+  level:
+    root: INFO
+    com.ecommerce.ecommercebackend: INFO
