@@ -7,13 +7,20 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:password}
 
+  sql:
+    init:
+      mode: always
+
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
     show-sql: true
     open-in-view: false
-
+    properties:
+      hibernate:
+        default_schema: ecommerce
+        
 logging:
   level:
     root: INFO
