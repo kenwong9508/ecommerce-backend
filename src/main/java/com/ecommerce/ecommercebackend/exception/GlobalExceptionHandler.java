@@ -6,6 +6,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -48,6 +49,18 @@ public class GlobalExceptionHandler {
         .body(ApiResponse.error("VALIDATION_ERROR", "Invalid input data format", errors));
   }
 
+  /**
+   * * Handles custom TokenRefreshException for expired, invalid, or revoked refresh tokens. Returns
+   * a 403 Forbidden status, prompting the frontend to redirect the user to the login page.
+   */
+  @ExceptionHandler(TokenRefreshException.class)
+  public ResponseEntity<ApiResponse<Void>> handleTokenRefreshException(TokenRefreshException ex) {
+    log.warn("Token refresh failed: {}", ex.getMessage());
+
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(ApiResponse.error("FORBIDDEN", ex.getMessage()));
+  }
+
   /** Fallback handler for any unhandled runtime exceptions (Catch-all) */
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
@@ -58,5 +71,18 @@ public class GlobalExceptionHandler {
             ApiResponse.error(
                 "INTERNAL_SERVER_ERROR",
                 "An unexpected system error occurred. Please try again later."));
+  }
+
+  /**
+   * * Handles incorrect email or password during the login process. Returns a 401 Unauthorized
+   * status.
+   */
+  @ExceptionHandler(BadCredentialsException.class)
+  public ResponseEntity<ApiResponse<Void>> handleBadCredentialsException(
+      BadCredentialsException ex) {
+    log.warn("Failed login attempt - Bad credentials");
+
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(ApiResponse.error("UNAUTHORIZED", "Invalid email or password. Please try again."));
   }
 }

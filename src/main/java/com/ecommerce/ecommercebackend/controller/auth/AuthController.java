@@ -1,5 +1,7 @@
 package com.ecommerce.ecommercebackend.controller.auth;
 
+import com.ecommerce.ecommercebackend.dto.auth.AuthResponse;
+import com.ecommerce.ecommercebackend.dto.auth.LoginRequest;
 import com.ecommerce.ecommercebackend.dto.auth.RegisterRequest;
 import com.ecommerce.ecommercebackend.dto.common.ApiResponse;
 import com.ecommerce.ecommercebackend.dto.user.UserResponse;
@@ -34,5 +36,14 @@ public class AuthController {
 
     // 3. Wrap the DTO in our standard ApiResponse and return 201 Created
     return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(responseDto));
+  }
+
+  @PostMapping("/login")
+  public ResponseEntity<ApiResponse<AuthResponse>> login(
+      @Valid @RequestBody LoginRequest loginRequest) {
+
+    AuthResponse authResponse = authService.login(loginRequest);
+
+    return ResponseEntity.ok(ApiResponse.success(authResponse));
   }
 }

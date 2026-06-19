@@ -1,14 +1,23 @@
 package com.ecommerce.ecommercebackend.service.auth.impl;
 
+import com.ecommerce.ecommercebackend.dto.auth.AuthResponse;
+import com.ecommerce.ecommercebackend.dto.auth.LoginRequest;
 import com.ecommerce.ecommercebackend.dto.auth.RegisterRequest;
 import com.ecommerce.ecommercebackend.model.user.Role;
 import com.ecommerce.ecommercebackend.model.user.User;
 import com.ecommerce.ecommercebackend.repository.user.RoleRepository;
 import com.ecommerce.ecommercebackend.repository.user.UserRepository;
+import com.ecommerce.ecommercebackend.security.CustomUserDetails;
+import com.ecommerce.ecommercebackend.security.JwtTokenProvider;
 import com.ecommerce.ecommercebackend.service.auth.AuthService;
+import com.ecommerce.ecommercebackend.service.auth.RefreshTokenService;
 import java.util.Collections;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +28,9 @@ public class AuthServiceImpl implements AuthService {
 
   private final UserRepository userRepository;
   private final RoleRepository roleRepository;
+  private final AuthenticationManager authenticationManager;
+  private final JwtTokenProvider jwtTokenProvider;
+  private final RefreshTokenService refreshTokenService;
 
   // Utility for hashing passwords securely
   private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -59,5 +71,36 @@ public class AuthServiceImpl implements AuthService {
     log.info("✅ Successfully registered new user: {}", savedUser.getUsername());
 
     return savedUser;
+  }
+
+  /**
+   * Authenticates the user credentials and generates a new pair of Access and Refresh tokens.
+   *
+   * @param loginRequest DTO containing the user's email and password.
+   * @return AuthResponse containing the generated JWTs.
+   */
+  @Override
+  public AuthResponse login(LoginRequest loginRequest) {
+
+    // 1. Delegate to AuthenticationManager to verify credentials against the database.
+    // If credentials are invalid, it automatically throws BadCredentialsException.
+    Authentication authentication =
+        authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(
+                loginRequest.getEmail(), loginRequest.getPassword()));
+
+    // 2. Authentication successful. Store the authenticated user in the Security Context.
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+
+    // 3. Generate the JWT Access Token and Refresh Token.
+    String accessToken = jwtTokenProvider.generateAccessToken(authentication);
+    String refreshTokenString = jwtTokenProvider.generateRefreshToken(authentication);
+
+    // 4. Extract user details to persist the Refresh Token in the database.
+    CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+    refreshTokenService.createAndSaveRefreshToken(userDetails.getId(), refreshTokenString);
+
+    // 5. Construct and return the AuthResponse DTO.
+    return AuthResponse.builder().accessToken(accessToken).refreshToken(refreshTokenString).build();
   }
 }

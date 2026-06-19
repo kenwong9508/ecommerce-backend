@@ -2,31 +2,69 @@ package com.ecommerce.ecommercebackend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity // Enables Spring Security's web security support
 public class SecurityConfig {
 
+  /**
+   * Exposes the AuthenticationManager as a Bean so it can be injected into AuthServiceImpl. This is
+   * required in Spring Security 6+ as it is no longer exposed by default.
+   */
+  @Bean
+  public AuthenticationManager authenticationManager(
+      AuthenticationConfiguration authenticationConfiguration) throws Exception {
+    return authenticationConfiguration.getAuthenticationManager();
+  }
+
+  /**
+   * Defines the password hashing algorithm. BCrypt is the industry standard for securely storing
+   * and verifying passwords.
+   */
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
+
+  /**
+   * Configures the core security filter chain. Sets up CSRF, session management, and routing
+   * authorization rules.
+   */
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
-        // 1. Disable CSRF protection (since we are building a REST API communicating via JSON,
-        // traditional form-based CSRF defense is not needed)
+        // 1. Disable CSRF protection (since we are building a REST API communicating via JSON
+        // and using stateless JWTs, traditional form-based CSRF defense is not needed)
         .csrf(AbstractHttpConfigurer::disable)
 
-        // 2. Configure API access rules
+        // 2. Set session management to STATELESS
+        // Instructs Spring Security not to create or use HTTP sessions for storing the user's
+        // security context
+        .sessionManagement(
+            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+        // 3. Configure API access rules
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers("/api/v1/auth/**")
-                    .permitAll()
+                    .permitAll() // Allow public access to Login/Register endpoints
                     .requestMatchers("/error")
-                    .permitAll()
+                    .permitAll() // Allow Spring's default error handler to work properly
                     .anyRequest()
-                    .authenticated());
+                    .authenticated() // All other endpoints require a valid authentication
+            );
+
+    // Note: The custom JwtAuthenticationFilter is intentionally omitted here for now
+    // so we can test the basic Login API flow in isolation first.
 
     return http.build();
   }
