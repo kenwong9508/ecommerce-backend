@@ -65,6 +65,7 @@ public class SecurityConfig {
                     auth.requestMatchers("/api/v1/auth/**")
                             .permitAll(); // Allow public access to Login/Register endpoints
                     auth.requestMatchers("/error").permitAll(); // Allow Spring's default error handler to work properly
+                    auth.requestMatchers("/health-check").permitAll();
                     auth.anyRequest().authenticated(); // All other endpoints require a valid authentication
                 });
 
