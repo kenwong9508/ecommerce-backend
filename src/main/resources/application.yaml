@@ -7,14 +7,35 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:password}
 
+  sql:
+    init:
+      mode: always
+
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
     show-sql: true
     open-in-view: false
-
+    properties:
+      hibernate:
+        default_schema: ecommerce
+        
 logging:
   level:
     root: INFO
     com.ecommerce.ecommercebackend: INFO
+
+# Custom Application Properties
+app:
+  jwt:
+    # Replace with a secure random string via environment variables in production
+    # Base64 encoded secret key for HMAC-SHA256 signing (minimum 256 bits / 32 bytes)
+    access-token-secret: c2VjcmV0LWtleS1mb3ItZWNvbW1lcmNlLWJhY2tlbmQtcHJvamVjdC1tdXN0LWJlLWxvbmctZW5vdWdo
+    refresh-token-secret: YW5vdGhlci12ZXJ5LWxvbmctYW5kLXNlY3VyZS1yZWZyZXNoLXRva2VuLXNlY3JldC1rZXktbWluaW11bS0yNTYtYml0cw==
+
+    # Access Token expiration time in milliseconds (900000 ms = 15 minutes)
+    access-token-expiration: 900000
+
+    # Refresh Token expiration time in milliseconds (604800000 ms = 7 days)
+    refresh-token-expiration: 604800000
