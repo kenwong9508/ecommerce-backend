@@ -11,7 +11,7 @@ public interface AuthService {
     /**
      * Registers a new user into the system.
      */
-    User registerUser(RegisterRequest request);
+    User register(RegisterRequest request);
 
     /**
      * Authenticates a user and generates access/refresh tokens.

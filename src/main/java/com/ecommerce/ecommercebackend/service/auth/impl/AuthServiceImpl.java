@@ -44,7 +44,7 @@ public class AuthServiceImpl implements AuthService {
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
-    public User registerUser(RegisterRequest request) {
+    public User register(RegisterRequest request) {
 
         // 1. Check if the username or email is already taken in the database
         if (userRepository.existsByUsername(request.getUsername())) {

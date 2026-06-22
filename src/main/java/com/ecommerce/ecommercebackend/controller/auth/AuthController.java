@@ -33,7 +33,7 @@ public class AuthController {
         log.info("Received registration request for email: {}", request.getEmail());
 
         // 1. Pass the validated DTO to the Service layer
-        User savedUser = authService.registerUser(request);
+        User savedUser = authService.register(request);
 
         // 2. Convert the saved Database Entity into a safe DTO
         UserResponse responseDto = UserResponse.fromEntity(savedUser);
