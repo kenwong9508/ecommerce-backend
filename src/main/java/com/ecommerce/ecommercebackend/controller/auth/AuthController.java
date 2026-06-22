@@ -61,4 +61,14 @@ public class AuthController {
         AuthResponse response = authService.renewAuthTokens(request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    /**
+     * Endpoint for logging out a user.
+     * Expects a valid Refresh Token in the request body to invalidate it in the database.
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Boolean>> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request);
+        return ResponseEntity.ok(ApiResponse.success(true));
+    }
 }

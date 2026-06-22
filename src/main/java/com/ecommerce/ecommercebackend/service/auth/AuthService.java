@@ -22,4 +22,9 @@ public interface AuthService {
      * Validates an old refresh token and issues new access/refresh tokens.
      */
     AuthResponse renewAuthTokens(RefreshTokenRequest request);
+
+    /**
+     * Logs out the user by invalidating their refresh token and clearing context.
+     */
+    void logout(RefreshTokenRequest request);
 }

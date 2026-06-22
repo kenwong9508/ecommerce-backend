@@ -159,4 +159,23 @@ public class AuthServiceImpl implements AuthService {
                 .refreshToken(newRefreshToken)
                 .build();
     }
+
+    /**
+     * Performs the logout process for a user.
+     * Invalidates (soft-deletes) the provided refresh token in the database and clears the security context.
+     */
+    @Override
+    public void logout(RefreshTokenRequest request) {
+        String refreshToken = request.getRefreshToken();
+
+        // 1. Soft-delete the refresh token from the database
+        // Instead of physically deleting it, we set its status to revoked/inactive (active = false).
+        refreshTokenService.revokeToken(refreshToken);
+
+        // 2. Clear the Spring Security Context for the current executing thread
+        // Prevents residual authentication data from leaking into the Thread Pool.
+        SecurityContextHolder.clearContext();
+
+        log.info("✅ User successfully logged out. Refresh token marked as revoked (Soft Delete).");
+    }
 }
