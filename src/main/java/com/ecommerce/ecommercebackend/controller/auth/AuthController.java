@@ -20,30 +20,29 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController {
 
-  private final AuthService authService;
+    private final AuthService authService;
 
-  @PostMapping("/register")
-  public ResponseEntity<ApiResponse<UserResponse>> registerUser(
-      @Valid @RequestBody RegisterRequest request) { // @Valid triggers the DTO validations
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse<UserResponse>> registerUser(
+            @Valid @RequestBody RegisterRequest request) { // @Valid triggers the DTO validations
 
-    log.info("Received registration request for email: {}", request.getEmail());
+        log.info("Received registration request for email: {}", request.getEmail());
 
-    // 1. Pass the validated DTO to the Service layer
-    User savedUser = authService.registerUser(request);
+        // 1. Pass the validated DTO to the Service layer
+        User savedUser = authService.registerUser(request);
 
-    // 2. Convert the saved Database Entity into a safe DTO
-    UserResponse responseDto = UserResponse.fromEntity(savedUser);
+        // 2. Convert the saved Database Entity into a safe DTO
+        UserResponse responseDto = UserResponse.fromEntity(savedUser);
 
-    // 3. Wrap the DTO in our standard ApiResponse and return 201 Created
-    return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(responseDto));
-  }
+        // 3. Wrap the DTO in our standard ApiResponse and return 201 Created
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(responseDto));
+    }
 
-  @PostMapping("/login")
-  public ResponseEntity<ApiResponse<AuthResponse>> login(
-      @Valid @RequestBody LoginRequest loginRequest) {
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest loginRequest) {
 
-    AuthResponse authResponse = authService.login(loginRequest);
+        AuthResponse authResponse = authService.login(loginRequest);
 
-    return ResponseEntity.ok(ApiResponse.success(authResponse));
-  }
+        return ResponseEntity.ok(ApiResponse.success(authResponse));
+    }
 }

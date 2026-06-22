@@ -8,6 +8,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface RoleRepository extends JpaRepository<Role, Long> {
 
-  // Custom query method to find a role by its exact name
-  Optional<Role> findByName(String name);
+    // Custom query method to find a role by its exact name
+    Optional<Role> findByName(String name);
 }

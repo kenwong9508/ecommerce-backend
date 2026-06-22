@@ -6,11 +6,11 @@ import java.util.Optional;
 /** Interface for Refresh Token lifecycle management operations. */
 public interface RefreshTokenService {
 
-  RefreshToken saveRefreshTokenEntity(Long userId, String token);
+    RefreshToken saveRefreshTokenEntity(Long userId, String token);
 
-  Optional<RefreshToken> findByToken(String tokenString);
+    Optional<RefreshToken> findByToken(String tokenString);
 
-  RefreshToken verifyExpirationAndStatus(RefreshToken token);
+    RefreshToken verifyExpirationAndStatus(RefreshToken token);
 
-  void revokeToken(String tokenString);
+    void revokeToken(String tokenString);
 }

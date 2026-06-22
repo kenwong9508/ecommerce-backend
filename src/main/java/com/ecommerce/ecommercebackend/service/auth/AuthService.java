@@ -7,8 +7,8 @@ import com.ecommerce.ecommercebackend.model.user.User;
 
 public interface AuthService {
 
-  // Defines the contract for user registration
-  User registerUser(RegisterRequest request);
+    // Defines the contract for user registration
+    User registerUser(RegisterRequest request);
 
-  AuthResponse login(LoginRequest loginRequest);
+    AuthResponse login(LoginRequest loginRequest);
 }

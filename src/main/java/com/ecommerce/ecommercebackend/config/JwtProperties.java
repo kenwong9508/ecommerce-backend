@@ -9,9 +9,9 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "app.jwt")
 public class JwtProperties {
 
-  private String accessTokenSecret;
-  private String refreshTokenSecret;
+    private String accessTokenSecret;
+    private String refreshTokenSecret;
 
-  private long accessTokenExpiration;
-  private long refreshTokenExpiration;
+    private long accessTokenExpiration;
+    private long refreshTokenExpiration;
 }

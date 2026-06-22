@@ -13,24 +13,24 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class DatabaseSeeder implements CommandLineRunner {
 
-  private final RoleRepository roleRepository;
+    private final RoleRepository roleRepository;
 
-  @Override
-  public void run(String... args) throws Exception {
+    @Override
+    public void run(String... args) throws Exception {
 
-    // Define all the default roles your system needs
-    List<String> defaultRoles = List.of("USER", "ADMIN", "MANAGER", "SUPER_ADMIN");
+        // Define all the default roles your system needs
+        List<String> defaultRoles = List.of("USER", "ADMIN", "MANAGER", "SUPER_ADMIN");
 
-    // Loop through the list and insert them if they don't exist
-    for (String roleName : defaultRoles) {
-      if (roleRepository.findByName(roleName).isEmpty()) {
-        Role role = new Role();
-        role.setName(roleName);
-        roleRepository.save(role);
+        // Loop through the list and insert them if they don't exist
+        for (String roleName : defaultRoles) {
+            if (roleRepository.findByName(roleName).isEmpty()) {
+                Role role = new Role();
+                role.setName(roleName);
+                roleRepository.save(role);
 
-        // Best Practice: Use '{}' for variable substitution in SLF4J
-        log.info("✅ DatabaseSeeder: Inserted default role -> {}", roleName);
-      }
+                // Best Practice: Use '{}' for variable substitution in SLF4J
+                log.info("✅ DatabaseSeeder: Inserted default role -> {}", roleName);
+            }
+        }
     }
-  }
 }

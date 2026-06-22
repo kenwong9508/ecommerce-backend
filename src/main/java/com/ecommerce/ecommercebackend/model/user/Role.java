@@ -10,6 +10,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Role extends BaseEntity {
-  @Column(length = 20, unique = true, nullable = false)
-  private String name; // e.g., "USER", "ADMIN"
+    @Column(length = 20, unique = true, nullable = false)
+    private String name; // e.g., "USER", "ADMIN"
 }
