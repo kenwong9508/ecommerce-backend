@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
@@ -50,13 +49,11 @@ public class JwtTokenProvider {
    * the User's Email (Login Identifier) - Custom claim "username" =
    * userPrincipal.getActualUsername() -> Maps to the Database Profile Username
    */
-  public String generateAccessToken(Authentication authentication) {
-    CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
-
+  public String generateAccessToken(CustomUserDetails userDetails) {
     // Convert Spring Security GrantedAuthority objects into plain String roles (e.g.,
     // ["ROLE_USER"])
     List<String> roles =
-        userPrincipal.getAuthorities().stream()
+        userDetails.getAuthorities().stream()
             .map(GrantedAuthority::getAuthority)
             .collect(Collectors.toList());
 
@@ -64,11 +61,11 @@ public class JwtTokenProvider {
     Date expiryDate = new Date(now.getTime() + jwtProperties.getAccessTokenExpiration());
 
     return Jwts.builder()
-        .subject(userPrincipal.getUsername()) // Standard Claim: "sub" (User's login Email)
-        .claim("userId", userPrincipal.getId()) // Custom Claim: Database User ID
+        .subject(userDetails.getUsername()) // Standard Claim: "sub" (User's login Email)
+        .claim("userId", userDetails.getId()) // Custom Claim: Database User ID
         .claim(
             "username",
-            userPrincipal.getActualUsername()) // Custom Claim: Profile Username (e.g., peter_chan)
+            userDetails.getActualUsername()) // Custom Claim: Profile Username (e.g., peter_chan)
         .claim("roles", roles) // Custom Claim: Assigned Security Roles
         .issuedAt(now) // Standard Claim: "iat"
         .expiration(expiryDate) // Standard Claim: "exp"
@@ -80,14 +77,12 @@ public class JwtTokenProvider {
    * Generates a long-lived Refresh Token with minimal public claims. Contains only the standard
    * subject (email) to allow session re-evaluation during rotation.
    */
-  public String generateRefreshToken(Authentication authentication) {
-    CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
-
+  public String generateRefreshToken(CustomUserDetails userDetails) {
     Date now = new Date();
     Date expiryDate = new Date(now.getTime() + jwtProperties.getRefreshTokenExpiration());
 
     return Jwts.builder()
-        .subject(userPrincipal.getUsername()) // Standard Claim: "sub" (User's login Email)
+        .subject(userDetails.getUsername()) // Standard Claim: "sub" (User's login Email)
         .issuedAt(now) // Standard Claim: "iat"
         .expiration(expiryDate) // Standard Claim: "exp"
         .signWith(refreshTokenSecretKey) // Signed cryptographically with the Refresh Key

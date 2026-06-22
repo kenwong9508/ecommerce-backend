@@ -92,15 +92,17 @@ public class AuthServiceImpl implements AuthService {
     // 2. Authentication successful. Store the authenticated user in the Security Context.
     SecurityContextHolder.getContext().setAuthentication(authentication);
 
-    // 3. Generate the JWT Access Token and Refresh Token.
-    String accessToken = jwtTokenProvider.generateAccessToken(authentication);
-    String refreshTokenString = jwtTokenProvider.generateRefreshToken(authentication);
-
-    // 4. Extract user details to persist the Refresh Token in the database.
+    // 3. Extract user details
     CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-    refreshTokenService.createAndSaveRefreshToken(userDetails.getId(), refreshTokenString);
 
-    // 5. Construct and return the AuthResponse DTO.
-    return AuthResponse.builder().accessToken(accessToken).refreshToken(refreshTokenString).build();
+    // 4. Generate the JWT Access Token and Refresh Token.
+    String accessToken = jwtTokenProvider.generateAccessToken(userDetails);
+    String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
+
+    // 5.  persist the Refresh Token in the database.
+    refreshTokenService.saveRefreshTokenEntity(userDetails.getId(), refreshToken);
+
+    // 6. Construct and return the AuthResponse DTO.
+    return AuthResponse.builder().accessToken(accessToken).refreshToken(refreshToken).build();
   }
 }

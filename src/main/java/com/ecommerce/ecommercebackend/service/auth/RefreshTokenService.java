@@ -6,7 +6,7 @@ import java.util.Optional;
 /** Interface for Refresh Token lifecycle management operations. */
 public interface RefreshTokenService {
 
-  RefreshToken createAndSaveRefreshToken(Long userId, String tokenString);
+  RefreshToken saveRefreshTokenEntity(Long userId, String token);
 
   Optional<RefreshToken> findByToken(String tokenString);
 
