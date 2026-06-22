@@ -144,21 +144,12 @@
                 <configuration>
                     <java>
                         <removeUnusedImports/>
-                        <googleJavaFormat>
-                            <version>1.17.0</version>
-                            <style>GOOGLE</style>
-                        </googleJavaFormat>
+                        <palantirJavaFormat>
+                            <version>2.39.0</version>
+                        </palantirJavaFormat>
                         <endWithNewline/>
                     </java>
                 </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <phase>compile</phase>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
