@@ -2,6 +2,7 @@ package com.ecommerce.ecommercebackend.controller.auth;
 
 import com.ecommerce.ecommercebackend.dto.auth.AuthResponse;
 import com.ecommerce.ecommercebackend.dto.auth.LoginRequest;
+import com.ecommerce.ecommercebackend.dto.auth.RefreshTokenRequest;
 import com.ecommerce.ecommercebackend.dto.auth.RegisterRequest;
 import com.ecommerce.ecommercebackend.dto.common.ApiResponse;
 import com.ecommerce.ecommercebackend.dto.user.UserResponse;
@@ -22,6 +23,9 @@ public class AuthController {
 
     private final AuthService authService;
 
+    /**
+     * Endpoint for registering a new user.
+     */
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<UserResponse>> registerUser(
             @Valid @RequestBody RegisterRequest request) { // @Valid triggers the DTO validations
@@ -38,11 +42,23 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(responseDto));
     }
 
+    /**
+     * Endpoint for authenticating a user and issuing tokens.
+     */
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest loginRequest) {
 
         AuthResponse authResponse = authService.login(loginRequest);
 
         return ResponseEntity.ok(ApiResponse.success(authResponse));
+    }
+
+    /**
+     * Endpoint for renewing access and refresh tokens using a valid refresh token.
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AuthResponse>> renewAuthTokens(@Valid @RequestBody RefreshTokenRequest request) {
+        AuthResponse response = authService.renewAuthTokens(request);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

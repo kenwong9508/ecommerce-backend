@@ -2,12 +2,16 @@ package com.ecommerce.ecommercebackend.service.auth.impl;
 
 import com.ecommerce.ecommercebackend.dto.auth.AuthResponse;
 import com.ecommerce.ecommercebackend.dto.auth.LoginRequest;
+import com.ecommerce.ecommercebackend.dto.auth.RefreshTokenRequest;
 import com.ecommerce.ecommercebackend.dto.auth.RegisterRequest;
+import com.ecommerce.ecommercebackend.exception.TokenRefreshException;
+import com.ecommerce.ecommercebackend.model.auth.RefreshToken;
 import com.ecommerce.ecommercebackend.model.user.Role;
 import com.ecommerce.ecommercebackend.model.user.User;
 import com.ecommerce.ecommercebackend.repository.user.RoleRepository;
 import com.ecommerce.ecommercebackend.repository.user.UserRepository;
 import com.ecommerce.ecommercebackend.security.CustomUserDetails;
+import com.ecommerce.ecommercebackend.security.CustomUserDetailsService;
 import com.ecommerce.ecommercebackend.security.JwtTokenProvider;
 import com.ecommerce.ecommercebackend.service.auth.AuthService;
 import com.ecommerce.ecommercebackend.service.auth.RefreshTokenService;
@@ -20,6 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service // Marks this class as a Spring Service component containing business logic
@@ -31,6 +36,9 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
+
+    // Added to reload the user's latest authorities during the token renewal process
+    private final CustomUserDetailsService customUserDetailsService;
 
     // Utility for hashing passwords securely
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -102,6 +110,53 @@ public class AuthServiceImpl implements AuthService {
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
+                .build();
+    }
+
+    /**
+     * Validates the provided refresh token and generates a new pair of tokens if valid.
+     * Implements Refresh Token Rotation for enhanced security.
+     *
+     * @param request DTO containing the old refresh token.
+     * @return AuthResponse containing the brand new JWT pair.
+     */
+    @Override
+    @Transactional
+    public AuthResponse renewAuthTokens(RefreshTokenRequest request) {
+        String requestRefreshToken = request.getRefreshToken();
+
+        // 1. Find token in DB
+        RefreshToken refreshTokenEntity = refreshTokenService
+                .findByToken(requestRefreshToken)
+                .orElseThrow(() -> new TokenRefreshException("Refresh token is invalid!"));
+
+        // 2. Verify expiration and status (Will throw exception if invalid)
+        refreshTokenEntity = refreshTokenService.verifyExpirationAndStatus(refreshTokenEntity);
+
+        // 3. Extract the associated user
+        User user = refreshTokenEntity.getUser();
+
+        // 4. Security Best Practice: Token Rotation
+        // Revoke the old refresh token immediately so it cannot be reused
+        refreshTokenService.revokeToken(requestRefreshToken);
+
+        // 5. Load the latest UserDetails to ensure authorities/roles are up-to-date
+        CustomUserDetails userDetails =
+                (CustomUserDetails) customUserDetailsService.loadUserByUsername(user.getEmail());
+
+        // 6. Generate a brand new pair of tokens using your refactored provider methods
+        String newAccessToken = jwtTokenProvider.generateAccessToken(userDetails);
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
+
+        // 7. Save the newly generated refresh token to the database using your refactored service method
+        refreshTokenService.saveRefreshTokenEntity(userDetails.getId(), newRefreshToken);
+
+        log.info("✅ Successfully renewed authentication tokens for user: {}", user.getEmail());
+
+        // 8. Return the new token pair
+        return AuthResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .build();
     }
 }
