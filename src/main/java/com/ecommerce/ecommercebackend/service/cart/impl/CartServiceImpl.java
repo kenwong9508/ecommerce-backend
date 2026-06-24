@@ -133,13 +133,13 @@ public class CartServiceImpl implements CartService {
                         .build());
     }
 
-
     @Override
     @Transactional
     public CartResponse removeItem(Long userId, Long cartItemId) {
 
         // 1. Fetch the specific cart item
-        CartItem cartItem = cartItemRepository.findById(cartItemId)
+        CartItem cartItem = cartItemRepository
+                .findById(cartItemId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with ID: " + cartItemId));
 
         // 2. CRITICAL SECURITY CHECK (IDOR Protection)
