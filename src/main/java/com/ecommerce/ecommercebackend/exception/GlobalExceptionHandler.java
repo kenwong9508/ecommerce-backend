@@ -101,6 +101,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error("INVALID_FORMAT", errorMessage));
     }
 
+    /** Handles unauthorized attempts to modify other users' resources (IDOR prevention) */
+    @ExceptionHandler(UnauthorizedAccessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnauthorizedAccess(UnauthorizedAccessException ex) {
+        log.warn("Security alert - Unauthorized access attempt: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("FORBIDDEN", ex.getMessage()));
+    }
+
     /** Fallback handler for any unhandled runtime exceptions (Catch-all) */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {

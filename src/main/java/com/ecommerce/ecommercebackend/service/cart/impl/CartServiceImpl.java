@@ -3,8 +3,10 @@ package com.ecommerce.ecommercebackend.service.cart.impl;
 import com.ecommerce.ecommercebackend.dto.cart.AddToCartRequest;
 import com.ecommerce.ecommercebackend.dto.cart.CartItemResponse;
 import com.ecommerce.ecommercebackend.dto.cart.CartResponse;
+import com.ecommerce.ecommercebackend.dto.cart.UpdateCartItemRequest;
 import com.ecommerce.ecommercebackend.exception.InsufficientStockException;
 import com.ecommerce.ecommercebackend.exception.ResourceNotFoundException;
+import com.ecommerce.ecommercebackend.exception.UnauthorizedAccessException;
 import com.ecommerce.ecommercebackend.model.cart.Cart;
 import com.ecommerce.ecommercebackend.model.cart.CartItem;
 import com.ecommerce.ecommercebackend.model.product.Product;
@@ -79,6 +81,40 @@ public class CartServiceImpl implements CartService {
 
         cartItemRepository.flush();
         return generateCartResponse(cart.getId());
+    }
+
+    @Override
+    @Transactional
+    public CartResponse updateItemQuantity(Long userId, Long cartItemId, UpdateCartItemRequest request) {
+
+        // 1. Fetch the specific cart item
+        CartItem cartItem = cartItemRepository
+                .findById(cartItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with ID: " + cartItemId));
+
+        // 2. CRITICAL SECURITY CHECK (IDOR Protection)
+        // Verify that the user attempting to modify this item is the actual owner of the cart.
+        // NOTE: Always use .equals() for Long object comparison, not '=='
+        Long ownerId = cartItem.getCart().getUser().getId();
+        if (!ownerId.equals(userId)) {
+            throw new UnauthorizedAccessException("You do not have permission to modify this cart item.");
+        }
+
+        // 3. Stock Validation
+        Product product = cartItem.getProduct();
+        if (product.getStockQuantity() < request.getQuantity()) {
+            throw new InsufficientStockException("Insufficient stock. Available stock: " + product.getStockQuantity());
+        }
+
+        // 4. Update the quantity and save
+        cartItem.setQuantity(request.getQuantity());
+        cartItemRepository.save(cartItem);
+
+        // 5. Force Hibernate to flush changes to DB before calculating the new totals
+        cartItemRepository.flush();
+
+        // 6. Return the fully re-calculated cart state
+        return generateCartResponse(cartItem.getCart().getId());
     }
 
     /**
