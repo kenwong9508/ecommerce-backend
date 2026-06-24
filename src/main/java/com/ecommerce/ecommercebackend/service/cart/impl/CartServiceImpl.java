@@ -132,6 +132,38 @@ public class CartServiceImpl implements CartService {
                         .totalPrice(BigDecimal.ZERO)
                         .build());
     }
+
+
+    @Override
+    @Transactional
+    public CartResponse removeItem(Long userId, Long cartItemId) {
+
+        // 1. Fetch the specific cart item
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with ID: " + cartItemId));
+
+        // 2. CRITICAL SECURITY CHECK (IDOR Protection)
+        // Verify ownership using .equals() on Long objects
+        Long ownerId = cartItem.getCart().getUser().getId();
+        if (!ownerId.equals(userId)) {
+            throw new UnauthorizedAccessException("You do not have permission to modify this cart item.");
+        }
+
+        // 3. Save the cartId before deleting the item
+        // (Because after deletion, cartItem.getCart() might be inaccessible)
+        Long cartId = cartItem.getCart().getId();
+
+        // 4. Delete the item from the database
+        cartItemRepository.delete(cartItem);
+
+        // 5. 🔥 The crucial Flush!
+        // Force Hibernate to execute the DELETE SQL immediately.
+        // If we skip this, generateCartResponse() will query the DB and still see the "deleted" item!
+        cartItemRepository.flush();
+
+        // 6. Return the fully re-calculated cart state
+        return generateCartResponse(cartId);
+    }
     /**
      * Internal helper method to build the comprehensive CartResponse.
      * This logic can be reused for the 'View Cart' endpoint.

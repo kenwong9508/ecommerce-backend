@@ -51,4 +51,15 @@ public class CartController {
         // Return perfectly wrapped in ApiResponse
         return ResponseEntity.ok(ApiResponse.success(cart));
     }
+
+    @DeleteMapping("/items/{cartItemId}")
+    public ResponseEntity<ApiResponse<CartResponse>> removeItem(
+            @AuthenticationPrincipal CustomUserDetails userDetails, @PathVariable Long cartItemId) {
+
+        // Execute the remove logic with strict user ownership validation
+        CartResponse updatedCart = cartService.removeItem(userDetails.getId(), cartItemId);
+
+        // Return perfectly wrapped in ApiResponse
+        return ResponseEntity.ok(ApiResponse.success(updatedCart));
+    }
 }

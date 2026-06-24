@@ -14,4 +14,7 @@ public interface CartService {
 
     // Retrieve the user's cart
     CartResponse getCart(Long userId);
+
+    // Remove a specific item from the cart
+    CartResponse removeItem(Long userId, Long cartItemId);
 }
