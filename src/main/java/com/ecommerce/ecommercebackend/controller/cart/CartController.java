@@ -41,4 +41,14 @@ public class CartController {
 
         return ResponseEntity.ok(ApiResponse.success(updatedCart));
     }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<CartResponse>> getCart(@AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        // Retrieve the cart (will return empty cart structure if user has no cart yet)
+        CartResponse cart = cartService.getCart(userDetails.getId());
+
+        // Return perfectly wrapped in ApiResponse
+        return ResponseEntity.ok(ApiResponse.success(cart));
+    }
 }

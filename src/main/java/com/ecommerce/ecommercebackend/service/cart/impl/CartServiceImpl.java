@@ -117,6 +117,21 @@ public class CartServiceImpl implements CartService {
         return generateCartResponse(cartItem.getCart().getId());
     }
 
+    @Override
+    @Transactional(readOnly = true) // 🌟 Optimization: Tells Hibernate to skip dirty-checking for faster reads
+    public CartResponse getCart(Long userId) {
+
+        // Find the cart. If found, generate the response.
+        // If NOT found, return an empty cart response dynamically without throwing an error.
+        return cartRepository
+                .findByUserId(userId)
+                .map(cart -> generateCartResponse(cart.getId()))
+                .orElseGet(() -> CartResponse.builder()
+                        .cartId(null) // Or assign a default logic if you prefer
+                        .items(List.of()) // Returns an immutable empty list []
+                        .totalPrice(BigDecimal.ZERO)
+                        .build());
+    }
     /**
      * Internal helper method to build the comprehensive CartResponse.
      * This logic can be reused for the 'View Cart' endpoint.
