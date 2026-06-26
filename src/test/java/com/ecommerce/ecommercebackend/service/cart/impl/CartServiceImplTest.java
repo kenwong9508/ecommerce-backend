@@ -421,4 +421,80 @@ class CartServiceImplTest {
             verify(cartItemRepository, never()).findAllByCartId(any());
         }
     }
+
+    // ==========================================
+    // Test Group 4: Remove Item
+    // ==========================================
+    @Nested
+    @DisplayName("Method: removeItem")
+    class RemoveItemTests {
+
+        @Test
+        @DisplayName("Success: Remove item successfully when user is the owner")
+        void should_RemoveItem_When_UserIsOwner() {
+            // 1. ARRANGE
+            Long targetCartItemId = 1001L;
+            Product mockProduct = createMockProduct(101L, 10);
+
+            // Utilize the helper method
+            CartItem existingItem = createMockCartItem(targetCartItemId, mockProduct, 2);
+
+            when(cartItemRepository.findById(targetCartItemId)).thenReturn(Optional.of(existingItem));
+
+            // Mock findAllByCartId because generateCartResponse is called at the end
+            // We return an empty list simulating that the item was deleted
+            when(cartItemRepository.findAllByCartId(STANDARD_CART_ID)).thenReturn(List.of());
+
+            // 2. ACT
+            CartResponse response = cartService.removeItem(STANDARD_USER_ID, targetCartItemId);
+
+            // 3. ASSERT
+            assertNotNull(response);
+
+            // Verify the item was physically deleted and changes were flushed to DB immediately
+            ArgumentCaptor<CartItem> itemCaptor = ArgumentCaptor.forClass(CartItem.class);
+            verify(cartItemRepository, times(1)).delete(itemCaptor.capture());
+            assertEquals(targetCartItemId, itemCaptor.getValue().getId());
+
+            verify(cartItemRepository, times(1)).flush();
+        }
+
+        @Test
+        @DisplayName("Fail: Throw exception when user is not the owner (IDOR)")
+        void should_ThrowException_When_UserIsNotOwner() {
+            // 1. ARRANGE
+            Long targetCartItemId = 1001L;
+            Long maliciousUserId = 999L; // Unauthorized hacker
+
+            Product mockProduct = createMockProduct(101L, 10);
+            CartItem existingItem = createMockCartItem(targetCartItemId, mockProduct, 2);
+
+            when(cartItemRepository.findById(targetCartItemId)).thenReturn(Optional.of(existingItem));
+
+            // 2. ACT & ASSERT
+            assertThrows(UnauthorizedAccessException.class, () -> {
+                cartService.removeItem(maliciousUserId, targetCartItemId);
+            });
+
+            // Strict check: Database must NOT execute delete under any circumstances
+            verify(cartItemRepository, never()).delete(any());
+        }
+
+        @Test
+        @DisplayName("Fail: Throw exception when cart item does not exist")
+        void should_ThrowException_When_CartItemNotFound() {
+            // 1. ARRANGE
+            Long invalidCartItemId = 9999L;
+
+            when(cartItemRepository.findById(invalidCartItemId)).thenReturn(Optional.empty());
+
+            // 2. ACT & ASSERT
+            assertThrows(ResourceNotFoundException.class, () -> {
+                cartService.removeItem(STANDARD_USER_ID, invalidCartItemId);
+            });
+
+            // Strict check: Database must NOT execute delete
+            verify(cartItemRepository, never()).delete(any());
+        }
+    }
 }
