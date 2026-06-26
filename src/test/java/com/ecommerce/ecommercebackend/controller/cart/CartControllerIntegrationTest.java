@@ -1,7 +1,9 @@
 package com.ecommerce.ecommercebackend.controller.cart;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -278,7 +280,88 @@ class CartControllerIntegrationTest {
     @Nested
     @DisplayName("API: GET /api/v1/cart")
     class GetCartTests {
-        // We will plan and write these next!
+
+        @Test
+        @DisplayName("Success: Return 200 and correct cart details when cart has items")
+        void should_Return200AndCartDetails_When_CartHasItems() throws Exception {
+            // 1. ARRANGE
+            // Create a Cart for testUser
+            Cart testCart = new Cart();
+            testCart.setUser(testUser);
+            testCart = cartRepository.save(testCart);
+
+            // Create a second product to test multiple items in cart
+            Product secondProduct = Product.builder()
+                    .name("Test Neon Mouse")
+                    .price(BigDecimal.valueOf(100.00))
+                    .stockQuantity(50)
+                    .category(testProduct.getCategory()) // Reuse the same category
+                    .build();
+            secondProduct = productRepository.save(secondProduct);
+
+            // Insert 2 items into the database cart
+            // Item 1: 1x Cyberpunk Keyboard (500.00)
+            CartItem item1 = CartItem.builder()
+                    .cart(testCart)
+                    .product(testProduct)
+                    .quantity(1)
+                    .unitPrice(testProduct.getPrice())
+                    .build();
+            cartItemRepository.save(item1);
+
+            // Item 2: 2x Neon Mouse (100.00 * 2 = 200.00)
+            CartItem item2 = CartItem.builder()
+                    .cart(testCart)
+                    .product(secondProduct)
+                    .quantity(2)
+                    .unitPrice(secondProduct.getPrice())
+                    .build();
+            cartItemRepository.save(item2);
+
+            // Total price should be: 500.00 + 200.00 = 700.00
+
+            // 2. ACT & ASSERT
+            mockMvc.perform(get("/api/v1/cart")
+                            .with(authentication(testAuth)) // Authenticated as testUser
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.error").isEmpty()) // Error field must be present but null
+                    .andExpect(jsonPath("$.data").exists())
+                    .andExpect(jsonPath("$.data.cartId").value(testCart.getId()))
+
+                    // Verify there are exactly 2 items in the array
+                    .andExpect(jsonPath("$.data.items", hasSize(2)))
+
+                    // Verify the math logic on total price
+                    .andExpect(jsonPath("$.data.totalPrice").value(700.00));
+        }
+
+        @Test
+        @DisplayName("Success: Return 200 and empty items list when new user fetches cart")
+        void should_Return200AndEmptyCart_When_UserHasNoCartItems() throws Exception {
+            // 1. ARRANGE: Create a completely clean new user with no cart history
+            User emptyUser = User.builder()
+                    .username("empty_cart_user")
+                    .email("empty@integration.com")
+                    .password("hashed_password")
+                    .build();
+            emptyUser = userRepository.save(emptyUser);
+
+            // Generate token for this specific new user
+            Authentication emptyAuth = mockUserLogin(emptyUser);
+
+            // 2. ACT & ASSERT
+            mockMvc.perform(get("/api/v1/cart")
+                            .with(authentication(emptyAuth)) // Use the new empty user's credentials
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.error").isEmpty())
+                    .andExpect(jsonPath("$.data").exists())
+
+                    // Empty cart should return an empty array [] and 0 total price
+                    .andExpect(jsonPath("$.data.items", hasSize(0)))
+                    .andExpect(jsonPath("$.data.totalPrice").value(0.00));
+        }
     }
 
     // =========================================================================
