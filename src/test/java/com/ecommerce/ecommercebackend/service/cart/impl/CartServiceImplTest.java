@@ -76,6 +76,16 @@ class CartServiceImplTest {
                 .build();
     }
 
+    private CartItem createMockCartItem(Long id, Product product, int quantity) {
+        return CartItem.builder()
+                .id(id)
+                .cart(mockCart) // Automatically bind to the globally shared mockCart
+                .product(product)
+                .quantity(quantity)
+                .unitPrice(product.getPrice())
+                .build();
+    }
+
     private AddToCartRequest createAddRequest(Long productId, int quantity) {
         return AddToCartRequest.builder()
                 .productId(productId)
@@ -387,6 +397,57 @@ class CartServiceImplTest {
             });
 
             verify(cartItemRepository, never()).save(any());
+        }
+    }
+
+    // ==========================================
+    // Test Group 3: Get Cart
+    // ==========================================
+    @Nested
+    @DisplayName("Method: getCart")
+    class GetCartTests {
+        @Test
+        @DisplayName("Success: Return existing cart with correctly calculated totals")
+        void should_ReturnCartResponse_When_CartExists() {
+            // 1. ARRANGE
+            Product mockProduct1 = createMockProduct(101L, 10);
+            Product mockProduct2 = createMockProduct(102L, 5);
+
+            // Utilize the new helper method for cleaner code
+            CartItem item1 = createMockCartItem(1001L, mockProduct1, 2); // Subtotal: $200
+            CartItem item2 = createMockCartItem(1002L, mockProduct2, 1); // Subtotal: $100
+
+            when(cartRepository.findByUserId(STANDARD_USER_ID)).thenReturn(Optional.of(mockCart));
+            when(cartItemRepository.findAllByCartId(STANDARD_CART_ID)).thenReturn(List.of(item1, item2));
+
+            // 2. ACT
+            CartResponse response = cartService.getCart(STANDARD_USER_ID);
+
+            // 3. ASSERT
+            assertNotNull(response);
+            assertEquals(STANDARD_CART_ID, response.getCartId());
+            assertEquals(2, response.getItems().size());
+
+            // Verify the math: $200.00 + $100.00 = $300.00
+            assertEquals(0, BigDecimal.valueOf(300.00).compareTo(response.getTotalPrice()));
+        }
+
+        @Test
+        @DisplayName("Success: Return empty cart response when user has no cart")
+        void should_ReturnEmptyCartResponse_When_CartDoesNotExist() {
+            // 1. ARRANGE
+            when(cartRepository.findByUserId(STANDARD_USER_ID)).thenReturn(Optional.empty());
+
+            // 2. ACT
+            CartResponse response = cartService.getCart(STANDARD_USER_ID);
+
+            // 3. ASSERT
+            assertNotNull(response);
+            assertNull(response.getCartId()); // Handled gracefully by orElseGet
+            assertTrue(response.getItems().isEmpty());
+            assertEquals(BigDecimal.ZERO, response.getTotalPrice());
+
+            verify(cartItemRepository, never()).findAllByCartId(any());
         }
     }
 }
