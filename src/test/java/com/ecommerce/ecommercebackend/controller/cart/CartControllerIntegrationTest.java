@@ -3,10 +3,14 @@ package com.ecommerce.ecommercebackend.controller.cart;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ecommerce.ecommercebackend.dto.cart.AddToCartRequest;
+import com.ecommerce.ecommercebackend.dto.cart.UpdateCartItemRequest;
+import com.ecommerce.ecommercebackend.model.cart.Cart;
+import com.ecommerce.ecommercebackend.model.cart.CartItem;
 import com.ecommerce.ecommercebackend.model.product.Category;
 import com.ecommerce.ecommercebackend.model.product.Product;
 import com.ecommerce.ecommercebackend.model.user.User;
@@ -173,7 +177,99 @@ class CartControllerIntegrationTest {
     @Nested
     @DisplayName("API: PUT /api/v1/cart/items/{cartItemId}")
     class UpdateItemQuantityTests {
-        // We will plan and write these next!
+
+        @Test
+        @DisplayName("Success: Return 200 and update quantity in DB when request is valid")
+        void should_Return200AndUpdateDb_When_RequestIsValid() throws Exception {
+            // 1. ARRANGE
+            // First, create a Cart for the test user
+            Cart testCart = new Cart();
+            testCart.setUser(testUser);
+            testCart = cartRepository.save(testCart);
+
+            // Then, insert a real CartItem linked to the Cart and Product
+            int initialQuantity = 2;
+            CartItem existingItem = CartItem.builder()
+                    .cart(testCart)
+                    .product(testProduct)
+                    .quantity(initialQuantity)
+                    .unitPrice(testProduct.getPrice())
+                    .build();
+            existingItem = cartItemRepository.save(existingItem);
+
+            // Prepare the PUT request body
+            int newQuantity = 5;
+            UpdateCartItemRequest request = new UpdateCartItemRequest();
+            request.setQuantity(newQuantity);
+
+            // 2. ACT & ASSERT (API Level)
+            mockMvc.perform(put("/api/v1/cart/items/" + existingItem.getId())
+                            .with(authentication(testAuth))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").exists()) // Data object should be populated
+                    .andExpect(jsonPath("$.error").isEmpty()); // Error object should be present but null
+
+            // 3. ASSERT (Database Level)
+            CartItem updatedItem =
+                    cartItemRepository.findById(existingItem.getId()).orElseThrow();
+            assertEquals(newQuantity, updatedItem.getQuantity(), "Database quantity should be updated to 5");
+        }
+
+        @Test
+        @DisplayName("Fail: Return 400 Bad Request and do not update DB when quantity is invalid")
+        void should_Return400AndNotUpdateDb_When_QuantityIsInvalid() throws Exception {
+            // 1. ARRANGE
+            Cart testCart = new Cart();
+            testCart.setUser(testUser);
+            cartRepository.save(testCart);
+
+            int initialQuantity = 2;
+            CartItem existingItem = CartItem.builder()
+                    .cart(testCart)
+                    .product(testProduct)
+                    .quantity(initialQuantity)
+                    .unitPrice(testProduct.getPrice())
+                    .build();
+            existingItem = cartItemRepository.save(existingItem);
+
+            // Prepare an invalid PUT request body (quantity = 0)
+            UpdateCartItemRequest request = new UpdateCartItemRequest();
+            request.setQuantity(0);
+
+            // 2. ACT & ASSERT (API Level)
+            mockMvc.perform(put("/api/v1/cart/items/" + existingItem.getId())
+                            .with(authentication(testAuth))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error").exists()) // Error object should be populated
+                    .andExpect(jsonPath("$.data").isEmpty()); // Data object should be present but null
+
+            // 3. ASSERT (Database Level) - Strictly ensure DB is unchanged
+            CartItem untouchedItem =
+                    cartItemRepository.findById(existingItem.getId()).orElseThrow();
+            assertEquals(initialQuantity, untouchedItem.getQuantity(), "Database quantity must remain unchanged");
+        }
+
+        @Test
+        @DisplayName("Fail: Return 404 Not Found when cart item does not exist")
+        void should_Return404_When_CartItemNotFound() throws Exception {
+            // 1. ARRANGE
+            Long nonExistentCartItemId = 9999L;
+            UpdateCartItemRequest request = new UpdateCartItemRequest();
+            request.setQuantity(5);
+
+            // 2. ACT & ASSERT
+            mockMvc.perform(put("/api/v1/cart/items/" + nonExistentCartItemId)
+                            .with(authentication(testAuth))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error").exists()) // Error object should be populated
+                    .andExpect(jsonPath("$.data").isEmpty()); // Data object should be present but null
+        }
     }
 
     // =========================================================================
