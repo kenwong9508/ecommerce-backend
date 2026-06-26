@@ -6,8 +6,10 @@ import static org.mockito.Mockito.*;
 
 import com.ecommerce.ecommercebackend.dto.cart.AddToCartRequest;
 import com.ecommerce.ecommercebackend.dto.cart.CartResponse;
+import com.ecommerce.ecommercebackend.dto.cart.UpdateCartItemRequest;
 import com.ecommerce.ecommercebackend.exception.InsufficientStockException;
 import com.ecommerce.ecommercebackend.exception.ResourceNotFoundException;
+import com.ecommerce.ecommercebackend.exception.UnauthorizedAccessException;
 import com.ecommerce.ecommercebackend.model.cart.Cart;
 import com.ecommerce.ecommercebackend.model.cart.CartItem;
 import com.ecommerce.ecommercebackend.model.product.Product;
@@ -258,6 +260,132 @@ class CartServiceImplTest {
             assertThrows(ResourceNotFoundException.class, () -> {
                 cartService.addItemToCart(STANDARD_USER_ID, request);
             });
+            verify(cartItemRepository, never()).save(any());
+        }
+    }
+
+    // ==========================================
+    // Helper Method: Create Update Request
+    // ==========================================
+    private UpdateCartItemRequest createUpdateRequest(int quantity) {
+        return UpdateCartItemRequest.builder().quantity(quantity).build();
+    }
+
+    // ==========================================
+    // Test Group 2: Update Item Quantity
+    // ==========================================
+    @Nested
+    @DisplayName("Method: updateItemQuantity")
+    class UpdateItemQuantityTests {
+
+        @Test
+        @DisplayName("Success: Update quantity when user is owner and stock is sufficient")
+        void should_UpdateQuantity_When_ValidRequest() {
+            // 1. ARRANGE
+            Long targetCartItemId = 1001L;
+            int sufficientStock = 10;
+            int newQuantity = 5;
+
+            Product mockProduct = createMockProduct(101L, sufficientStock);
+            CartItem existingItem = CartItem.builder()
+                    .id(targetCartItemId)
+                    .cart(mockCart) // mockCart belongs to STANDARD_USER_ID (1L)
+                    .product(mockProduct)
+                    .quantity(2)
+                    .unitPrice(mockProduct.getPrice())
+                    .build();
+
+            UpdateCartItemRequest request = createUpdateRequest(newQuantity);
+
+            when(cartItemRepository.findById(targetCartItemId)).thenReturn(Optional.of(existingItem));
+            when(cartItemRepository.findAllByCartId(STANDARD_CART_ID)).thenReturn(List.of(existingItem));
+
+            // 2. ACT
+            CartResponse response = cartService.updateItemQuantity(STANDARD_USER_ID, targetCartItemId, request);
+
+            // 3. ASSERT
+            assertNotNull(response);
+
+            // Verify that the new quantity (5) was saved successfully
+            ArgumentCaptor<CartItem> itemCaptor = ArgumentCaptor.forClass(CartItem.class);
+            verify(cartItemRepository, times(1)).save(itemCaptor.capture());
+            assertEquals(newQuantity, itemCaptor.getValue().getQuantity());
+
+            verify(cartItemRepository, times(1)).flush();
+        }
+
+        @Test
+        @DisplayName("Fail: Throw exception when user is not the owner (IDOR)")
+        void should_ThrowException_When_UserIsNotOwner() {
+            // 1. ARRANGE
+            Long targetCartItemId = 1001L;
+            Long maliciousUserId = 999L; // Hacker / unauthorized user
+
+            Product mockProduct = createMockProduct(101L, 10);
+            CartItem existingItem = CartItem.builder()
+                    .id(targetCartItemId)
+                    .cart(mockCart) // mockCart belongs to STANDARD_USER_ID (1L)
+                    .product(mockProduct)
+                    .quantity(2)
+                    .build();
+
+            UpdateCartItemRequest request = createUpdateRequest(5);
+
+            when(cartItemRepository.findById(targetCartItemId)).thenReturn(Optional.of(existingItem));
+
+            // 2. ACT & ASSERT
+            // Pass maliciousUserId to attempt unauthorized modification
+            assertThrows(UnauthorizedAccessException.class, () -> {
+                cartService.updateItemQuantity(maliciousUserId, targetCartItemId, request);
+            });
+
+            // Strict check: Database must NOT be modified under any circumstances
+            verify(cartItemRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Fail: Throw exception when requested quantity exceeds stock")
+        void should_ThrowException_When_UpdateExceedsStock() {
+            // 1. ARRANGE
+            Long targetCartItemId = 1001L;
+            int lowStock = 3;
+            int excessiveQuantity = 5;
+
+            Product mockProduct = createMockProduct(101L, lowStock);
+            CartItem existingItem = CartItem.builder()
+                    .id(targetCartItemId)
+                    .cart(mockCart)
+                    .product(mockProduct)
+                    .quantity(2)
+                    .build();
+
+            UpdateCartItemRequest request = createUpdateRequest(excessiveQuantity);
+
+            when(cartItemRepository.findById(targetCartItemId)).thenReturn(Optional.of(existingItem));
+
+            // 2. ACT & ASSERT
+            assertThrows(InsufficientStockException.class, () -> {
+                cartService.updateItemQuantity(STANDARD_USER_ID, targetCartItemId, request);
+            });
+
+            // Strict check: Database must NOT be modified
+            verify(cartItemRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Fail: Throw exception when cart item does not exist")
+        void should_ThrowException_When_CartItemNotFound() {
+            // 1. ARRANGE
+            Long invalidCartItemId = 9999L;
+            UpdateCartItemRequest request = createUpdateRequest(5);
+
+            when(cartItemRepository.findById(invalidCartItemId)).thenReturn(Optional.empty());
+
+            // 2. ACT & ASSERT
+            assertThrows(ResourceNotFoundException.class, () -> {
+                cartService.updateItemQuantity(STANDARD_USER_ID, invalidCartItemId, request);
+            });
+
             verify(cartItemRepository, never()).save(any());
         }
     }
