@@ -1,0 +1,19 @@
+spring:
+  # 1. Database Connection Settings (In-Memory H2)
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+
+  # 2. Hibernate / JPA Settings
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      # Automatically create the database schema before tests run, and drop it immediately after
+      ddl-auto: create-drop
+    # Print executed SQL statements to the console for easy debugging
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true

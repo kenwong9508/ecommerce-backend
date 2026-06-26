@@ -1,11 +1,13 @@
 package com.ecommerce.ecommercebackend.exception;
 
 import com.ecommerce.ecommercebackend.dto.common.ApiResponse;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -54,16 +56,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("FORBIDDEN", ex.getMessage()));
     }
 
-    /** Fallback handler for any unhandled runtime exceptions (Catch-all) */
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
-        log.error("An unexpected error occurred: ", ex);
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(
-                        "INTERNAL_SERVER_ERROR", "An unexpected system error occurred. Please try again later."));
-    }
-
     /**
      * * Handles incorrect email or password during the login process. Returns a 401 Unauthorized
      * status.
@@ -74,5 +66,56 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.error("UNAUTHORIZED", "Invalid email or password. Please try again."));
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(ResourceNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("NOT_FOUND", ex.getMessage()));
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ApiResponse<Void>> handleStockError(InsufficientStockException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error("BAD_REQUEST", ex.getMessage()));
+    }
+
+    /**
+     * Intercepts JSON parsing errors (e.g., providing a String when an Integer is expected)
+     * and extracts the exact field name that caused the issue.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleJsonParseException(HttpMessageNotReadableException ex) {
+
+        String errorMessage = "Invalid JSON request format.";
+
+        // Unwrap the exception to see if Jackson threw an InvalidFormatException
+        Throwable cause = ex.getCause();
+        if (cause instanceof InvalidFormatException invalidFormatException
+                && !invalidFormatException.getPath().isEmpty()) {
+            String fieldName = invalidFormatException.getPath().get(0).getFieldName();
+            String targetType = invalidFormatException.getTargetType().getSimpleName();
+
+            // Construct a highly precise error message
+            errorMessage = String.format("Invalid format for field '%s'. Expected a valid %s.", fieldName, targetType);
+        }
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error("INVALID_FORMAT", errorMessage));
+    }
+
+    /** Handles unauthorized attempts to modify other users' resources (IDOR prevention) */
+    @ExceptionHandler(UnauthorizedAccessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnauthorizedAccess(UnauthorizedAccessException ex) {
+        log.warn("Security alert - Unauthorized access attempt: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("FORBIDDEN", ex.getMessage()));
+    }
+
+    /** Fallback handler for any unhandled runtime exceptions (Catch-all) */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex) {
+        log.error("An unexpected error occurred: ", ex);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(
+                        "INTERNAL_SERVER_ERROR", "An unexpected system error occurred. Please try again later."));
     }
 }

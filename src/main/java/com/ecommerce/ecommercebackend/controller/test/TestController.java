@@ -1,4 +1,4 @@
-package com.ecommerce.ecommercebackend.controller;
+package com.ecommerce.ecommercebackend.controller.test;
 
 import com.ecommerce.ecommercebackend.dto.common.ApiResponse;
 import com.ecommerce.ecommercebackend.security.CustomUserDetails;
