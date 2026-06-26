@@ -118,13 +118,8 @@ class CartServiceImplTest {
             when(cartItemRepository.findByCartIdAndProductId(STANDARD_CART_ID, targetProductId))
                     .thenReturn(Optional.empty());
 
-            CartItem savedItem = CartItem.builder()
-                    .id(1001L)
-                    .cart(mockCart)
-                    .product(mockProduct)
-                    .quantity(requestedQuantity)
-                    .unitPrice(mockProduct.getPrice())
-                    .build();
+            CartItem savedItem = createMockCartItem(1001L, mockProduct, requestedQuantity);
+
             when(cartItemRepository.findAllByCartId(STANDARD_CART_ID)).thenReturn(List.of(savedItem));
 
             // 2. ACT
@@ -150,13 +145,7 @@ class CartServiceImplTest {
             Product mockProduct = createMockProduct(targetProductId, sufficientStock);
             AddToCartRequest request = createAddRequest(targetProductId, newlyRequestedQuantity);
 
-            CartItem existingItem = CartItem.builder()
-                    .id(1001L)
-                    .cart(mockCart)
-                    .product(mockProduct)
-                    .quantity(existingQuantity)
-                    .unitPrice(mockProduct.getPrice())
-                    .build();
+            CartItem existingItem = createMockCartItem(1001L, mockProduct, existingQuantity);
 
             when(userRepository.findById(STANDARD_USER_ID)).thenReturn(Optional.of(mockUser));
             when(cartRepository.findByUserId(STANDARD_USER_ID)).thenReturn(Optional.of(mockCart));
@@ -214,12 +203,7 @@ class CartServiceImplTest {
             Product mockProduct = createMockProduct(targetProductId, totalStock);
             AddToCartRequest request = createAddRequest(targetProductId, newlyRequestedQuantity);
 
-            CartItem existingItem = CartItem.builder()
-                    .id(1001L)
-                    .cart(mockCart)
-                    .product(mockProduct)
-                    .quantity(existingQuantity)
-                    .build();
+            CartItem existingItem = createMockCartItem(1001L, mockProduct, existingQuantity);
 
             when(userRepository.findById(STANDARD_USER_ID)).thenReturn(Optional.of(mockUser));
             when(cartRepository.findByUserId(STANDARD_USER_ID)).thenReturn(Optional.of(mockCart));
@@ -297,13 +281,8 @@ class CartServiceImplTest {
             int newQuantity = 5;
 
             Product mockProduct = createMockProduct(101L, sufficientStock);
-            CartItem existingItem = CartItem.builder()
-                    .id(targetCartItemId)
-                    .cart(mockCart) // mockCart belongs to STANDARD_USER_ID (1L)
-                    .product(mockProduct)
-                    .quantity(2)
-                    .unitPrice(mockProduct.getPrice())
-                    .build();
+
+            CartItem existingItem = createMockCartItem(targetCartItemId, mockProduct, 2);
 
             UpdateCartItemRequest request = createUpdateRequest(newQuantity);
 
@@ -332,12 +311,8 @@ class CartServiceImplTest {
             Long maliciousUserId = 999L; // Hacker / unauthorized user
 
             Product mockProduct = createMockProduct(101L, 10);
-            CartItem existingItem = CartItem.builder()
-                    .id(targetCartItemId)
-                    .cart(mockCart) // mockCart belongs to STANDARD_USER_ID (1L)
-                    .product(mockProduct)
-                    .quantity(2)
-                    .build();
+
+            CartItem existingItem = createMockCartItem(targetCartItemId, mockProduct, 2);
 
             UpdateCartItemRequest request = createUpdateRequest(5);
 
@@ -362,12 +337,8 @@ class CartServiceImplTest {
             int excessiveQuantity = 5;
 
             Product mockProduct = createMockProduct(101L, lowStock);
-            CartItem existingItem = CartItem.builder()
-                    .id(targetCartItemId)
-                    .cart(mockCart)
-                    .product(mockProduct)
-                    .quantity(2)
-                    .build();
+
+            CartItem existingItem = createMockCartItem(targetCartItemId, mockProduct, 2);
 
             UpdateCartItemRequest request = createUpdateRequest(excessiveQuantity);
 
