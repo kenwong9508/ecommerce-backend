@@ -2,7 +2,9 @@ package com.ecommerce.ecommercebackend.controller.cart;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -370,7 +372,51 @@ class CartControllerIntegrationTest {
     @Nested
     @DisplayName("API: DELETE /api/v1/cart/items/{cartItemId}")
     class RemoveItemTests {
-        // We will plan and write these next!
+
+        @Test
+        @DisplayName("Success: Return 200 and remove item from DB when request is valid")
+        void should_Return200AndRemoveFromDb_When_RequestIsValid() throws Exception {
+            // 1. ARRANGE
+            // Create a Cart for testUser
+            Cart testCart = new Cart();
+            testCart.setUser(testUser);
+            testCart = cartRepository.save(testCart);
+
+            // Insert a real CartItem into the database
+            CartItem itemToDelete = CartItem.builder()
+                    .cart(testCart)
+                    .product(testProduct)
+                    .quantity(1)
+                    .unitPrice(testProduct.getPrice())
+                    .build();
+            itemToDelete = cartItemRepository.save(itemToDelete);
+
+            // 2. ACT & ASSERT (API Level)
+            mockMvc.perform(delete("/api/v1/cart/items/" + itemToDelete.getId())
+                            .with(authentication(testAuth))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.error").isEmpty()); // Error object should be null on success
+
+            // 3. ASSERT (Database Level) - Strictly ensure it's deleted
+            boolean itemStillExists = cartItemRepository.existsById(itemToDelete.getId());
+            assertFalse(itemStillExists, "CartItem should be completely removed from the database");
+        }
+
+        @Test
+        @DisplayName("Fail: Return 404 Not Found when trying to delete non-existent item")
+        void should_Return404_When_CartItemDoesNotExist() throws Exception {
+            // 1. ARRANGE
+            Long nonExistentCartItemId = 9999L;
+
+            // 2. ACT & ASSERT
+            mockMvc.perform(delete("/api/v1/cart/items/" + nonExistentCartItemId)
+                            .with(authentication(testAuth))
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound()) // Assuming it throws ResourceNotFoundException
+                    .andExpect(jsonPath("$.error").exists()) // Error object must be populated
+                    .andExpect(jsonPath("$.data").isEmpty()); // Data object must be null
+        }
     }
 
     // ==========================================
